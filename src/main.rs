@@ -1,7 +1,11 @@
-use std::env;
-use std::path::Path;
+use std::{env, path::Path};
+
+mod scanner;
+mod watcher;
 
 fn main() {
+    tracing_subscriber::fmt::init();
+
     let args: Vec<String> = env::args().collect();
 
     if let Err(e) = run(&args) {
@@ -10,25 +14,21 @@ fn main() {
     }
 }
 
-fn run(args: &[String]) -> Result<(), String> {
+fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
     if args.len() < 2 {
         return Err("Usage: file_watcher <path>".into());
     }
 
-    let path_str: &str = &args[1];
-    let path = Path::new(path_str);
+    let root = Path::new(&args[1]);
 
-    if !path.exists() {
-        return Err(format!("Path does not exist: {path_str}"));
+    if !root.exists() {
+        return Err(format!("Path does not exist: {}", root.display()).into());
     }
 
-    if path.is_file() {
-        println!("It is a FILE: {path_str}");
-    } else if path.is_dir() {
-        println!("It is a DIRECTORY: {path_str}");
-    } else {
-        println!("It exists, but is neither a file nor a directory: {path_str}");
-    }
+    tracing::info!("Root: {}", root.display());
+    tracing::info!("Press Ctrl+C to stop.");
+
+    watcher::watch_and_scan(root)?;
 
     Ok(())
 }
